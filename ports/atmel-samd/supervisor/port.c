@@ -186,8 +186,6 @@ safe_mode_t port_init(void) {
 #endif
     clock_init();
 
-    board_init();
-
     // Configure millisecond timer initialization.
     tick_init();
 
@@ -196,6 +194,10 @@ safe_mode_t port_init(void) {
 #endif
 
     init_shared_dma();
+
+    // Init the board last so everything else is ready
+    board_init();
+
     #ifdef CIRCUITPY_CANARY_WORD
     // Run in safe mode if the canary is corrupt.
     if (_ezero != CIRCUITPY_CANARY_WORD) {
@@ -235,11 +237,17 @@ void reset_port(void) {
             continue;
         }
 #endif
+#ifdef CIRCUITPY_DISPLAYIO
+        // TODO(tannewt): Make this dynamic.
+        if (sercom_instances[i] == board_display_obj.bus.spi_desc.dev.prvt) {
+            continue;
+        }
+#endif
         // SWRST is same for all modes of SERCOMs.
         sercom_instances[i]->SPI.CTRLA.bit.SWRST = 1;
     }
 
-#ifdef EXPRESS_BOARD
+#if defined(EXPRESS_BOARD) && !defined(__SAMR21G18A__)
     audioout_reset();
     #if !defined(__SAMD51G19A__) && !defined(__SAMD51G18A__)
     i2sout_reset();

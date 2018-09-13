@@ -30,8 +30,9 @@
 #include "ble_uart.h"
 #else
 #include "nrf_gpio.h"
-#include "pin.h"
 #endif
+
+#if !defined( NRF52840_XXAA) || ( defined(CFG_HWUART_FOR_SERIAL) && CFG_HWUART_FOR_SERIAL == 1 )
 
 #define INST_NO 0
 
@@ -78,3 +79,30 @@ bool serial_bytes_available(void) {
 void serial_write(const char *text) {
     mp_hal_stdout_tx_str(text);
 }
+
+#else
+
+#include "tusb.h"
+
+void serial_init(void) {
+    // usb is already initialized in board_init()
+}
+
+
+bool serial_connected(void) {
+    return tud_cdc_connected();
+}
+
+char serial_read(void) {
+    return (char) tud_cdc_read_char();
+}
+
+bool serial_bytes_available(void) {
+    return tud_cdc_available() > 0;
+}
+
+void serial_write(const char* text) {
+    tud_cdc_write(text, strlen(text));
+}
+
+#endif

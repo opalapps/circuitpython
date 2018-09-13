@@ -7,6 +7,16 @@ in a port if no underlying hardware support is present or if flash space is
 limited. For example, a microcontroller without analog features will not have
 `analogio`.
 
+Modules
+---------
+
+.. toctree::
+    :glob:
+    :maxdepth: 3
+
+    */__init__
+    help
+
 .. _module-support-matrix:
 
 Support Matrix
@@ -29,10 +39,12 @@ Module             Supported Ports
 `binascii`         **ESP8266**
 `bitbangio`        **SAMD Express, ESP8266**
 `board`            **All Supported**
+`bleio`            **nRF**
 `busio`            **All Supported**
 `digitalio`        **All Supported**
 `gamepad`          **SAMD Express, nRF**
 `hashlib`          **ESP8266**
+`i2cslave`         **SAMD Express**
 `math`             **All Supported**
 `microcontroller`  **All Supported**
 `multiterminal`    **ESP8266**
@@ -50,13 +62,3 @@ Module             Supported Ports
 `uheap`            **Debug (All)**
 `usb_hid`          **SAMD/SAMD Express**
 =================  ==============================
-
-Modules
----------
-
-.. toctree::
-    :glob:
-    :maxdepth: 3
-
-    */__init__
-    help

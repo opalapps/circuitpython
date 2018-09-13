@@ -7,7 +7,6 @@
 *.bin
 *.map
 *.hex
-!ports/nrf/**/bootloader/*.hex
 *.dis
 *.exe
 
@@ -58,4 +57,12 @@ TAGS
 #################
 *.orig
 
+# Emacs backup files
+####################
+*~
+
 *.DS_Store
+
+# POEdit mo files
+####################
+*.mo

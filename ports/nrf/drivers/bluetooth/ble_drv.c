@@ -30,12 +30,16 @@
 #include <string.h>
 #include <stdbool.h>
 
+#if (BLUETOOTH_SD == 132)
 #define NRF52 // Needed for SD132 v2
+#endif
 
 #include "py/runtime.h"
+#include "supervisor/shared/translate.h"
 #include "ble_drv.h"
 #include "mpconfigport.h"
 #include "nrf_sdm.h"
+#include "nrfx_power.h"
 #include "ble_gap.h"
 #include "ble.h" // sd_ble_uuid_encode
 
@@ -142,6 +146,12 @@ uint32_t ble_drv_stack_enable(void) {
 #endif
     };
 #endif
+
+#if (BLUETOOTH_SD == 140)
+    // The SD takes over the POWER IRQ and will fail if the IRQ is already in use
+    nrfx_power_uninit();
+#endif
+
     uint32_t err_code = sd_softdevice_enable(&clock_config,
                                              softdevice_assert_handler);
 
@@ -186,7 +196,7 @@ uint32_t ble_drv_stack_enable(void) {
                                                (const uint8_t *)device_name,
                                                 strlen(device_name))) != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Cannot apply GAP parameters."));
+                  translate("Cannot apply GAP parameters.")));
     }
 
     // set connection parameters
@@ -200,7 +210,7 @@ uint32_t ble_drv_stack_enable(void) {
     if (sd_ble_gap_ppcp_set(&gap_conn_params) != 0) {
 
     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-              "Cannot set PPCP parameters."));
+              translate("Cannot set PPCP parameters.")));
     }
 
     return err_code;
@@ -232,7 +242,7 @@ void ble_drv_address_get(ble_drv_addr_t * p_addr) {
 
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not query for the device address."));
+                  translate("Can not query for the device address.")));
     }
 
     BLE_DRIVER_LOG("ble address, type: " HEX2_FMT ", " \
@@ -251,7 +261,7 @@ bool ble_drv_uuid_add_vs(uint8_t * p_uuid, uint8_t * idx) {
 
     if (sd_ble_uuid_vs_add((ble_uuid128_t const *)p_uuid, idx) != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not add Vendor Specific 128-bit UUID."));
+                  translate("Can not add Vendor Specific 128-bit UUID.")));
     }
 
     return true;
@@ -271,7 +281,7 @@ bool ble_drv_service_add(ubluepy_service_obj_t * p_service_obj) {
                                      &uuid,
                                      &p_service_obj->handle) != 0) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                      "Can not add Service."));
+                      translate("Can not add Service.")));
         }
     } else if (p_service_obj->p_uuid->type == BLE_UUID_TYPE_BLE) {
         BLE_DRIVER_LOG("adding service\n");
@@ -285,7 +295,7 @@ bool ble_drv_service_add(ubluepy_service_obj_t * p_service_obj) {
                                      &uuid,
                                      &p_service_obj->handle) != 0) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                      "Can not add Service."));
+                      translate("Can not add Service.")));
         }
     }
     return true;
@@ -360,7 +370,7 @@ bool ble_drv_characteristic_add(ubluepy_characteristic_obj_t * p_char_obj) {
                                         &attr_char_value,
                                         &handles) != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not add Characteristic."));
+                  translate("Can not add Characteristic.")));
     }
 
     // apply handles to object instance
@@ -387,7 +397,7 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
                                        p_adv_params->p_device_name,
                                        p_adv_params->device_name_len) != 0) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-	              "Can not apply device name in the stack."));
+	              translate("Can not apply device name in the stack.")));
         }
 
         BLE_DRIVER_LOG("Device name applied\n");
@@ -451,13 +461,13 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
                 // calculate total size of uuids
                 if (sd_ble_uuid_encode(&uuid, &encoded_size, NULL) != 0) {
                     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                              "Can not encode UUID, to check length."));
+                              translate("Can not encode UUID, to check length.")));
                 }
 
                 // do encoding into the adv buffer
                 if (sd_ble_uuid_encode(&uuid, &encoded_size, &adv_data[byte_pos]) != 0) {
                     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                              "Can encode UUID into the advertisment packet."));
+                              translate("Can encode UUID into the advertisment packet.")));
                 }
 
                 BLE_DRIVER_LOG("encoded uuid for service %u: ", 0);
@@ -501,13 +511,13 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
                 // calculate total size of uuids
                 if (sd_ble_uuid_encode(&uuid, &encoded_size, NULL) != 0) {
                     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                              "Can not encode UUID, to check length."));
+                              translate("Can not encode UUID, to check length.")));
                 }
 
                 // do encoding into the adv buffer
                 if (sd_ble_uuid_encode(&uuid, &encoded_size, &adv_data[byte_pos]) != 0) {
                     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                              "Can encode UUID into the advertisment packet."));
+                              translate("Can encode UUID into the advertisment packet.")));
                 }
 
                 BLE_DRIVER_LOG("encoded uuid for service %u: ", 0);
@@ -532,7 +542,7 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
     if ((p_adv_params->data_len > 0) && (p_adv_params->p_data != NULL)) {
         if (p_adv_params->data_len + byte_pos > BLE_GAP_ADV_MAX_SIZE) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                      "Can not fit data into the advertisment packet."));
+                      translate("Can not fit data into the advertisment packet.")));
         }
 
         memcpy(adv_data, p_adv_params->p_data, p_adv_params->data_len);
@@ -545,7 +555,7 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
     if ((err_code = sd_ble_gap_adv_data_set(adv_data, byte_pos, NULL, 0)) != 0) {
 
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not apply advertisment data. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not apply advertisment data. status: 0x%02x"), (uint16_t)err_code));
     }
     BLE_DRIVER_LOG("Set Adv data size: " UINT_FMT "\n", byte_pos);
 #endif
@@ -591,7 +601,7 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
 
     if ((err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &ble_gap_adv_data, &m_adv_params)) != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not apply advertisment data. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not apply advertisment data. status: 0x%02x"), (uint16_t)err_code));
     }
     err_code = sd_ble_gap_adv_start(m_adv_handle, BLE_CONN_CFG_TAG_DEFAULT);
 #elif (BLUETOOTH_SD == 132 && BLE_API_VERSION == 4)
@@ -601,7 +611,7 @@ bool ble_drv_advertise_data(ubluepy_advertise_data_t * p_adv_params) {
 #endif
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not start advertisment. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not start advertisment. status: 0x%02x"), (uint16_t)err_code));
     }
 
     m_adv_in_progress = true;
@@ -618,7 +628,7 @@ void ble_drv_advertise_stop(void) {
         if ((err_code = sd_ble_gap_adv_stop()) != 0) {
 #endif
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                      "Can not stop advertisment. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                      translate("Can not stop advertisment. status: 0x%02x"), (uint16_t)err_code));
         }
     }
     m_adv_in_progress = false;
@@ -637,7 +647,7 @@ void ble_drv_attr_s_read(uint16_t conn_handle, uint16_t handle, uint16_t len, ui
                                                &gatts_value);
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not read attribute value. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not read attribute value. status: 0x%02x"), (uint16_t)err_code));
     }
 
 }
@@ -654,7 +664,7 @@ void ble_drv_attr_s_write(uint16_t conn_handle, uint16_t handle, uint16_t len, u
 
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not write attribute value. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not write attribute value. status: 0x%02x"), (uint16_t)err_code));
     }
 }
 
@@ -678,7 +688,7 @@ void ble_drv_attr_s_notify(uint16_t conn_handle, uint16_t handle, uint16_t len, 
     uint32_t err_code;
     if ((err_code = sd_ble_gatts_hvx(conn_handle, &hvx_params)) != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not notify attribute value. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not notify attribute value. status: 0x%02x"), (uint16_t)err_code));
     }
 }
 
@@ -713,7 +723,7 @@ void ble_drv_attr_c_read(uint16_t conn_handle, uint16_t handle, mp_obj_t obj, bl
                                           0);
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not read attribute value. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not read attribute value. status: 0x%02x"), (uint16_t)err_code));
     }
 
     while (gattc_char_data_handle != NULL) {
@@ -743,7 +753,7 @@ void ble_drv_attr_c_write(uint16_t conn_handle, uint16_t handle, uint16_t len, u
 
     if (err_code != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-            "Can not write attribute value. status: 0x" HEX2_FMT, (uint16_t)err_code));
+            translate("Can not write attribute value. status: 0x%02x"), (uint16_t)err_code));
     }
 
     while (m_write_done != true) {
@@ -771,7 +781,7 @@ void ble_drv_scan_start(void) {
     if ((err_code = sd_ble_gap_scan_start(&scan_params)) != 0) {
 #endif
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not start scanning. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not start scanning. status: 0x%02x"), (uint16_t)err_code));
     }
 }
 
@@ -816,7 +826,7 @@ void ble_drv_connect(uint8_t * p_addr, uint8_t addr_type) {
     if ((err_code = sd_ble_gap_connect(&addr, &scan_params, &conn_params, BLE_CONN_CFG_TAG_DEFAULT)) != 0) {
 #endif
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError,
-                  "Can not connect. status: 0x" HEX2_FMT, (uint16_t)err_code));
+                  translate("Can not connect. status: 0x%02x"), (uint16_t)err_code));
     }
 }
 
