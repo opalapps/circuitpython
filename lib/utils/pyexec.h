@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,13 @@
 #include "py/obj.h"
 
 typedef enum {
-    PYEXEC_MODE_RAW_REPL,
     PYEXEC_MODE_FRIENDLY_REPL,
+    PYEXEC_MODE_RAW_REPL,
 } pyexec_mode_kind_t;
 
 typedef struct {
     int return_code;
-    const mp_obj_type_t * exception_type;
+    const mp_obj_type_t *exception_type;
     int exception_line;
 } pyexec_result_t;
 
@@ -49,16 +49,20 @@ extern int pyexec_system_exit;
 #define PYEXEC_FORCED_EXIT (0x100)
 #define PYEXEC_SWITCH_MODE (0x200)
 #define PYEXEC_EXCEPTION   (0x400)
+#define PYEXEC_DEEP_SLEEP  (0x800)
 
 int pyexec_raw_repl(void);
 int pyexec_friendly_repl(void);
 int pyexec_file(const char *filename, pyexec_result_t *result);
-int pyexec_frozen_module(const char *name);
+int pyexec_file_if_exists(const char *filename, pyexec_result_t *result);
+int pyexec_frozen_module(const char *name, pyexec_result_t *result);
 void pyexec_event_repl_init(void);
 int pyexec_event_repl_process_char(int c);
 extern uint8_t pyexec_repl_active;
-mp_obj_t pyb_set_repl_info(mp_obj_t o_value);
 
+#if MICROPY_REPL_INFO
+mp_obj_t pyb_set_repl_info(mp_obj_t o_value);
 MP_DECLARE_CONST_FUN_OBJ_1(pyb_set_repl_info_obj);
+#endif
 
 #endif // MICROPY_INCLUDED_LIB_UTILS_PYEXEC_H

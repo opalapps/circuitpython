@@ -1,6 +1,12 @@
+<!--
+SPDX-FileCopyrightText: 2014 MicroPython & CircuitPython contributors (https://github.com/adafruit/circuitpython/graphs/contributors)
+
+SPDX-License-Identifier: MIT
+-->
+
 # Contributing
 Please note that this project is released with a
-[Contributor Code of Conduct](https://github.com/adafruit/circuitpython/blob/master/CODE_OF_CONDUCT.md).
+[Contributor Code of Conduct](CODE_OF_CONDUCT.md).
 By participating in this project you agree to abide by its terms. Participation
 covers any forum used to converse about CircuitPython including unofficial and official spaces. Failure to do
 so will result in corrective actions such as time out or ban from the project.
@@ -14,7 +20,15 @@ If you have an employment contract with your employer please make sure that they
 don't automatically own your work product. Make sure to get any necessary approvals
 before contributing. Another term for this contribution off-hours is moonlighting.
 
-## Getting started
+## Ways to contribute
+As CircuitPython grows, there are more and more ways to contribute. Here are some ideas:
+
+* Build a project with CircuitPython and share how to do it online.
+* Test the latest libraries and CircuitPython versions with your projects and file issues for any bugs you find.
+* Contribute Python code to CircuitPython libraries that support new devices or features of an existing device.
+* Contribute C code to CircuitPython which fixes an open issue or adds a new feature.
+
+## Getting started with C
 CircuitPython developer Dan Halbert (@dhalbert) has written up build instructions using native build
 tools [here](https://learn.adafruit.com/building-circuitpython).
 

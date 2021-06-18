@@ -38,24 +38,9 @@
 
 #include "py/runtime.h"
 
-//| :mod:`digitalio` --- Basic digital pin support
-//| =================================================
-//|
-//| .. module:: digitalio
-//|   :synopsis: Basic digital pin support
-//|   :platform: SAMD21, ESP8266
+//| """Basic digital pin support
 //|
 //| The `digitalio` module contains classes to provide access to basic digital IO.
-//|
-//| Libraries
-//|
-//| .. toctree::
-//|     :maxdepth: 3
-//|
-//|     DigitalInOut
-//|     Direction
-//|     DriveMode
-//|     Pull
 //|
 //| All classes change hardware state and should be deinitialized when they
 //| are no longer needed if the program continues after use. To do so, either
@@ -86,7 +71,7 @@
 //|       led.value = True
 //|       time.sleep(0.1)
 //|       led.value = False
-//|       time.sleep(0.1)
+//|       time.sleep(0.1)"""
 //|
 
 STATIC const mp_rom_map_elem_t digitalio_module_globals_table[] = {
@@ -103,5 +88,5 @@ STATIC MP_DEFINE_CONST_DICT(digitalio_module_globals, digitalio_module_globals_t
 
 const mp_obj_module_t digitalio_module = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t*)&digitalio_module_globals,
+    .globals = (mp_obj_dict_t *)&digitalio_module_globals,
 };

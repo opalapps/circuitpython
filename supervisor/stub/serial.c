@@ -25,6 +25,11 @@
  */
 
 #include "supervisor/serial.h"
+#include "supervisor/workflow.h"
+
+void serial_early_init(void) {
+
+}
 
 void serial_init(void) {
 
@@ -42,5 +47,13 @@ bool serial_bytes_available(void) {
     return false;
 }
 
-void serial_write(const char* text) {
+void serial_write(const char *text) {
+    (void)text;
+}
+
+void supervisor_workflow_reset(void) {
+}
+
+bool supervisor_workflow_active(void) {
+    return false;
 }

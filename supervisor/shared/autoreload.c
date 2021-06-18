@@ -28,10 +28,14 @@
 
 #include "py/mphal.h"
 #include "py/reload.h"
+#include "supervisor/shared/tick.h"
 
-volatile uint32_t autoreload_delay_ms = 0;
-bool autoreload_enabled = false;
+#include "shared-bindings/supervisor/Runtime.h"
+
+static volatile uint32_t autoreload_delay_ms = 0;
+static bool autoreload_enabled = false;
 static bool autoreload_suspended = false;
+
 volatile bool reload_requested = false;
 
 inline void autoreload_tick() {
@@ -42,6 +46,8 @@ inline void autoreload_tick() {
         !autoreload_suspended && !reload_requested) {
         mp_raise_reload_exception();
         reload_requested = true;
+        supervisor_set_run_reason(RUN_REASON_AUTO_RELOAD);
+        supervisor_disable_tick();
     }
     autoreload_delay_ms--;
 }
@@ -68,10 +74,25 @@ inline bool autoreload_is_enabled() {
 }
 
 void autoreload_start() {
+    // Enable ticks if we haven't been tracking an autoreload delay. We check
+    // our current state so that we only turn ticks on once. Multiple starts
+    // can occur before we reload and then turn ticks off.
+    if (autoreload_delay_ms == 0) {
+        supervisor_enable_tick();
+    }
     autoreload_delay_ms = CIRCUITPY_AUTORELOAD_DELAY_MS;
 }
 
 void autoreload_stop() {
     autoreload_delay_ms = 0;
     reload_requested = false;
+}
+
+void autoreload_now() {
+    if (!autoreload_enabled || autoreload_suspended || reload_requested) {
+        return;
+    }
+    mp_raise_reload_exception();
+    reload_requested = true;
+    supervisor_set_run_reason(RUN_REASON_AUTO_RELOAD);
 }

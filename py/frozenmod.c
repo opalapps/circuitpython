@@ -4,7 +4,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2015 Paul Sokolovsky
- * Copyright (c) 2016 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2016 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -157,7 +157,7 @@ int mp_find_frozen_module(const char *str, size_t len, void **data) {
     #if MICROPY_MODULE_FROZEN_MPY
     const mp_raw_code_t *rc = mp_find_frozen_mpy(str, len);
     if (rc != NULL) {
-        *data = (void*)rc;
+        *data = (void *)rc;
         return MP_FROZEN_MPY;
     }
     #endif

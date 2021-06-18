@@ -3,7 +3,8 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2013, 2014 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2014-2017 Paul Sokolovsky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,8 +30,12 @@
 
 #include "py/objtuple.h"
 #include "py/runtime.h"
+#include "py/objtype.h"
 
 #include "supervisor/shared/translate.h"
+
+// type check is done on getiter method to allow tuple, namedtuple, attrtuple
+#define mp_obj_is_tuple_compatible(o) (mp_obj_get_type(o)->getiter == mp_obj_tuple_getiter)
 
 /******************************************************************************/
 /* tuple                                                                      */
@@ -59,10 +64,10 @@ void mp_obj_tuple_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
     }
 }
 
-STATIC mp_obj_t mp_obj_tuple_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t mp_obj_tuple_make_new(const mp_obj_type_t *type_in, size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     (void)type_in;
 
-    mp_arg_check_num(n_args, n_kw, 0, 1, false);
+    mp_arg_check_num(n_args, kw_args, 0, 1, false);
 
     switch (n_args) {
         case 0:
@@ -72,7 +77,7 @@ STATIC mp_obj_t mp_obj_tuple_make_new(const mp_obj_type_t *type_in, size_t n_arg
         case 1:
         default: {
             // 1 argument, an iterable from which we make a new tuple
-            if (MP_OBJ_IS_TYPE(args[0], &mp_type_tuple)) {
+            if (mp_obj_is_type(args[0], &mp_type_tuple)) {
                 return args[0];
             }
 
@@ -102,17 +107,13 @@ STATIC mp_obj_t mp_obj_tuple_make_new(const mp_obj_type_t *type_in, size_t n_arg
 
 // Don't pass MP_BINARY_OP_NOT_EQUAL here
 STATIC mp_obj_t tuple_cmp_helper(mp_uint_t op, mp_obj_t self_in, mp_obj_t another_in) {
-    // type check is done on getiter method to allow tuple, namedtuple, attrtuple
-    mp_check_self(mp_obj_get_type(self_in)->getiter == mp_obj_tuple_getiter);
-    mp_obj_type_t *another_type = mp_obj_get_type(another_in);
+    mp_check_self(mp_obj_is_tuple_compatible(self_in));
+    const mp_obj_type_t *another_type = mp_obj_get_type(another_in);
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
     if (another_type->getiter != mp_obj_tuple_getiter) {
         // Slow path for user subclasses
-        another_in = mp_instance_cast_to_native_base(another_in, MP_OBJ_FROM_PTR(&mp_type_tuple));
+        another_in = mp_obj_cast_to_native_base(another_in, MP_OBJ_FROM_PTR(&mp_type_tuple));
         if (another_in == MP_OBJ_NULL) {
-            if (op == MP_BINARY_OP_EQUAL) {
-                return mp_const_false;
-            }
             return MP_OBJ_NULL;
         }
     }
@@ -124,7 +125,8 @@ STATIC mp_obj_t tuple_cmp_helper(mp_uint_t op, mp_obj_t self_in, mp_obj_t anothe
 mp_obj_t mp_obj_tuple_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
     switch (op) {
-        case MP_UNARY_OP_BOOL: return mp_obj_new_bool(self->len != 0);
+        case MP_UNARY_OP_BOOL:
+            return mp_obj_new_bool(self->len != 0);
         case MP_UNARY_OP_HASH: {
             // start hash with pointer to empty tuple, to make it fairly unique
             mp_int_t hash = (mp_int_t)mp_const_empty_tuple;
@@ -133,8 +135,10 @@ mp_obj_t mp_obj_tuple_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
             }
             return MP_OBJ_NEW_SMALL_INT(hash);
         }
-        case MP_UNARY_OP_LEN: return MP_OBJ_NEW_SMALL_INT(self->len);
-        default: return MP_OBJ_NULL; // op not supported
+        case MP_UNARY_OP_LEN:
+            return MP_OBJ_NEW_SMALL_INT(self->len);
+        default:
+            return MP_OBJ_NULL;      // op not supported
     }
 }
 
@@ -160,7 +164,8 @@ mp_obj_t mp_obj_tuple_binary_op(mp_binary_op_t op, mp_obj_t lhs, mp_obj_t rhs) {
             if (n <= 0) {
                 return mp_const_empty_tuple;
             }
-            mp_obj_tuple_t *s = MP_OBJ_TO_PTR(mp_obj_new_tuple(o->len * n, NULL));
+            size_t new_len = mp_seq_multiply_len(o->len, n);
+            mp_obj_tuple_t *s = MP_OBJ_TO_PTR(mp_obj_new_tuple(new_len, NULL));
             mp_seq_multiply(o->items, sizeof(*o->items), o->len, n, s->items);
             return MP_OBJ_FROM_PTR(s);
         }
@@ -180,17 +185,22 @@ mp_obj_t mp_obj_tuple_subscr(mp_obj_t self_in, mp_obj_t index, mp_obj_t value) {
     if (value == MP_OBJ_SENTINEL) {
         // load
         mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
-#if MICROPY_PY_BUILTINS_SLICE
-        if (MP_OBJ_IS_TYPE(index, &mp_type_slice)) {
+        // when called with a native type (eg namedtuple) using mp_obj_tuple_subscr, get the native self
+        if (self->base.type->subscr != &mp_obj_tuple_subscr) {
+            self = mp_obj_cast_to_native_base(self_in, &mp_type_tuple);
+        }
+
+        #if MICROPY_PY_BUILTINS_SLICE
+        if (mp_obj_is_type(index, &mp_type_slice)) {
             mp_bound_slice_t slice;
             if (!mp_seq_get_fast_slice_indexes(self->len, index, &slice)) {
-                mp_raise_NotImplementedError(translate("only slices with step=1 (aka None) are supported"));
+                mp_raise_NotImplementedError(MP_ERROR_TEXT("only slices with step=1 (aka None) are supported"));
             }
             mp_obj_tuple_t *res = MP_OBJ_TO_PTR(mp_obj_new_tuple(slice.stop - slice.start, NULL));
             mp_seq_copy(res->items, self->items + slice.start, res->len, mp_obj_t);
             return MP_OBJ_FROM_PTR(res);
         }
-#endif
+        #endif
         size_t index_value = mp_get_index(self->base.type, self->len, index, false);
         return self->items[index_value];
     } else {
@@ -199,14 +209,14 @@ mp_obj_t mp_obj_tuple_subscr(mp_obj_t self_in, mp_obj_t index, mp_obj_t value) {
 }
 
 STATIC mp_obj_t tuple_count(mp_obj_t self_in, mp_obj_t value) {
-    mp_check_self(MP_OBJ_IS_TYPE(self_in, &mp_type_tuple));
+    mp_check_self(mp_obj_is_type(self_in, &mp_type_tuple));
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
     return mp_seq_count_obj(self->items, self->len, value);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(tuple_count_obj, tuple_count);
 
 STATIC mp_obj_t tuple_index(size_t n_args, const mp_obj_t *args) {
-    mp_check_self(MP_OBJ_IS_TYPE(args[0], &mp_type_tuple));
+    mp_check_self(mp_obj_is_type(args[0], &mp_type_tuple));
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(args[0]);
     return mp_seq_index_obj(self->items, self->len, n_args, args);
 }
@@ -228,7 +238,7 @@ const mp_obj_type_t mp_type_tuple = {
     .binary_op = mp_obj_tuple_binary_op,
     .subscr = mp_obj_tuple_subscr,
     .getiter = mp_obj_tuple_getiter,
-    .locals_dict = (mp_obj_dict_t*)&tuple_locals_dict,
+    .locals_dict = (mp_obj_dict_t *)&tuple_locals_dict,
 };
 
 // the zero-length tuple
@@ -250,14 +260,14 @@ mp_obj_t mp_obj_new_tuple(size_t n, const mp_obj_t *items) {
 }
 
 void mp_obj_tuple_get(mp_obj_t self_in, size_t *len, mp_obj_t **items) {
-    assert(MP_OBJ_IS_TYPE(self_in, &mp_type_tuple));
+    assert(mp_obj_is_tuple_compatible(self_in));
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
     *len = self->len;
     *items = &self->items[0];
 }
 
 void mp_obj_tuple_del(mp_obj_t self_in) {
-    assert(MP_OBJ_IS_TYPE(self_in, &mp_type_tuple));
+    assert(mp_obj_is_type(self_in, &mp_type_tuple));
     mp_obj_tuple_t *self = MP_OBJ_TO_PTR(self_in);
     m_del_var(mp_obj_tuple_t, mp_obj_t, self->len, self);
 }
@@ -285,7 +295,7 @@ STATIC mp_obj_t tuple_it_iternext(mp_obj_t self_in) {
 
 mp_obj_t mp_obj_tuple_getiter(mp_obj_t o_in, mp_obj_iter_buf_t *iter_buf) {
     assert(sizeof(mp_obj_tuple_it_t) <= sizeof(mp_obj_iter_buf_t));
-    mp_obj_tuple_it_t *o = (mp_obj_tuple_it_t*)iter_buf;
+    mp_obj_tuple_it_t *o = (mp_obj_tuple_it_t *)iter_buf;
     o->base.type = &mp_type_polymorph_iter;
     o->iternext = tuple_it_iternext;
     o->tuple = MP_OBJ_TO_PTR(o_in);

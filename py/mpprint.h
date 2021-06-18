@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,9 +40,9 @@
 #define PF_FLAG_SHOW_OCTAL_LETTER (0x200)
 
 #if MICROPY_PY_IO && MICROPY_PY_SYS_STDFILES
-#    define MP_PYTHON_PRINTER &mp_sys_stdout_print
+#define MP_PYTHON_PRINTER &mp_sys_stdout_print
 #else
-#    define MP_PYTHON_PRINTER &mp_plat_print
+#define MP_PYTHON_PRINTER &mp_plat_print
 #endif
 
 typedef void (*mp_print_strn_t)(void *data, const char *str, size_t len);

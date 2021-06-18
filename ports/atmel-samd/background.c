@@ -26,26 +26,37 @@
 #include "background.h"
 
 #include "audio_dma.h"
-#include "tick.h"
-#include "usb.h"
-#include "usb_mass_storage.h"
+#include "supervisor/filesystem.h"
+#include "supervisor/shared/tick.h"
+#include "supervisor/usb.h"
 
+#include "py/runtime.h"
+#include "shared-module/network/__init__.h"
+#include "supervisor/shared/stack.h"
+#include "supervisor/port.h"
+
+#ifdef CIRCUITPY_DISPLAYIO
 #include "shared-module/displayio/__init__.h"
+#endif
 
-volatile uint64_t last_finished_tick = 0;
-
-void run_background_tasks(void) {
-    #if (defined(SAMD21) && defined(PIN_PA02)) || defined(SAMD51)
-    audio_dma_background();
-    #endif
-    #ifdef CIRCUITPY_DISPLAYIO
-    displayio_refresh_display();
-    #endif
-    usb_msc_background();
-    usb_cdc_background();
-    last_finished_tick = ticks_ms;
+#ifdef MONITOR_BACKGROUND_TASKS
+// PB03 is physical pin "SCL" on the Metro M4 express
+// so you can't use this code AND an i2c peripheral
+// at the same time unless you change this
+void port_start_background_task(void) {
+    REG_PORT_DIRSET1 = (1 << 3);
+    REG_PORT_OUTSET1 = (1 << 3);
 }
 
-bool background_tasks_ok(void) {
-    return ticks_ms - last_finished_tick < 1000;
+void port_finish_background_task(void) {
+    REG_PORT_OUTCLR1 = (1 << 3);
+}
+#else
+void port_start_background_task(void) {
+}
+void port_finish_background_task(void) {
+}
+#endif
+
+void port_background_task(void) {
 }

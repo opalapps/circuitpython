@@ -24,18 +24,13 @@
  * THE SOFTWARE.
  */
 
-#include <string.h>
-#include <stdbool.h>
-#include "boards/board.h"
-#include "nrfx.h"
-#include "usb.h"
+#include "supervisor/board.h"
 
 void board_init(void) {
-    usb_init();
 }
 
 bool board_requests_safe_mode(void) {
-  return false;
+    return false;
 }
 
 void reset_board(void) {

@@ -27,10 +27,6 @@
 #ifndef MICROPY_INCLUDED_SHARED_MODULE_AUDIOIO__INIT__H
 #define MICROPY_INCLUDED_SHARED_MODULE_AUDIOIO__INIT__H
 
-typedef enum {
-    GET_BUFFER_DONE,            // No more data to read
-    GET_BUFFER_MORE_DATA,       // More data to read.
-    GET_BUFFER_ERROR,           // Error while reading data.
-} audioio_get_buffer_result_t;
+#include "shared-module/audiocore/__init__.h"
 
 #endif  // MICROPY_INCLUDED_SHARED_MODULE_AUDIOIO__INIT__H

@@ -31,17 +31,14 @@
 
 #include "lib/oofatfs/ff.h"
 
+#include "supervisor/shared/tick.h"
+
 // Global millisecond tick count (driven by SysTick interrupt).
-extern volatile uint64_t ticks_ms;
+#define mp_hal_ticks_ms()       ((mp_uint_t)supervisor_ticks_ms32())
 
-static inline mp_uint_t mp_hal_ticks_ms(void) {
-  return ticks_ms;
-}
 // Number of bytes in receive buffer
-volatile uint8_t usb_rx_count;
-volatile bool mp_cdc_enabled;
-
-FIL* boot_output_file;
+extern volatile uint8_t usb_rx_count;
+extern volatile bool mp_cdc_enabled;
 
 int receive_usb(void);
 

@@ -4,6 +4,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2015 Glenn Ruben Bakke
+ * Copyright (c) 2019 Dan Halbert for Adafruit Industries
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,223 +28,187 @@
 #ifndef NRF5_MPCONFIGPORT_H__
 #define NRF5_MPCONFIGPORT_H__
 
-#include <mpconfigboard.h>
+#include "ble_drv.h"
 
-// options to control how MicroPython is built
-#define MICROPY_ALLOC_PATH_MAX                   (512)
-#define MICROPY_PERSISTENT_CODE_LOAD             (1)
-#define MICROPY_EMIT_THUMB                       (0)
-#define MICROPY_EMIT_INLINE_THUMB                (0)
-#define MICROPY_COMP_MODULE_CONST                (0)
-#define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN         (0)
-#define MICROPY_READER_VFS                       (MICROPY_VFS)
-#define MICROPY_ENABLE_GC                        (1)
-#define MICROPY_ENABLE_FINALISER                 (1)
-#define MICROPY_STACK_CHECK                      (0)
-#define MICROPY_HELPER_REPL                      (1)
-#define MICROPY_REPL_EMACS_KEYS                  (0)
-#define MICROPY_REPL_AUTO_INDENT                 (1)
-#define MICROPY_ENABLE_SOURCE_LINE               (1)
-//CP UPDATE: See mpconfigport.h for LONGINT implementation
-#define MICROPY_LONGINT_IMPL                     (MICROPY_LONGINT_IMPL_MPZ)
-#define MICROPY_FLOAT_IMPL                       (MICROPY_FLOAT_IMPL_FLOAT)
-#define MICROPY_FLOAT_HIGH_QUALITY_HASH          (1)
+#include "nrf_mbr.h"  // for MBR_SIZE
+#include "nrf_sdm.h"  // for SD_FLASH_SIZE
+#include "peripherals/nrf/nvm.h" // for FLASH_PAGE_SIZE
 
-#define MICROPY_OPT_COMPUTED_GOTO                (0)
-#define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE (0)
-#define MICROPY_OPT_MPZ_BITWISE                  (0)
-
-// fatfs configuration used in ffconf.h
-#define MICROPY_FATFS_ENABLE_LFN                 (1)
-#define MICROPY_FATFS_LFN_CODE_PAGE              (437) /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
-#define MICROPY_FATFS_USE_LABEL                  (1)
-#define MICROPY_FATFS_RPATH                      (2)
-#define MICROPY_FATFS_MULTI_PARTITION            (0)
-#define MICROPY_FATFS_NUM_PERSISTENT             (1)
-
-//#define MICROPY_FATFS_MAX_SS                   (4096)
-#define FILESYSTEM_BLOCK_SIZE                    (512)
-
-#define MICROPY_VFS                              (1)
-#define MICROPY_VFS_FAT                          (MICROPY_VFS)
-
-// use vfs's functions for import stat and builtin open
-#if MICROPY_VFS
-#define mp_import_stat mp_vfs_import_stat
-#define mp_builtin_open mp_vfs_open
-#define mp_builtin_open_obj mp_vfs_open_obj
-#endif
-
-#define MICROPY_CPYTHON_COMPAT                   (0)
-#define MICROPY_STREAMS_NON_BLOCK                (1)
-#define MICROPY_MODULE_WEAK_LINKS                (1)
-#define MICROPY_CAN_OVERRIDE_BUILTINS            (1)
-#define MICROPY_USE_INTERNAL_ERRNO               (0)
 #define MICROPY_PY_FUNCTION_ATTRS                (1)
-#define MICROPY_PY_BUILTINS_STR_UNICODE          (1)
-#define MICROPY_PY_BUILTINS_STR_CENTER           (0)
-#define MICROPY_PY_BUILTINS_STR_PARTITION        (0)
-#define MICROPY_PY_BUILTINS_STR_SPLITLINES       (0)
-#define MICROPY_PY_BUILTINS_MEMORYVIEW           (1)
-#define MICROPY_PY_BUILTINS_FROZENSET            (1)
-#define MICROPY_PY_BUILTINS_EXECFILE             (0)
-#define MICROPY_PY_BUILTINS_COMPILE              (1)
-#define MICROPY_PY_BUILTINS_HELP                 (1)
-#define MICROPY_PY_BUILTINS_HELP_MODULES         (1)
-#define MICROPY_PY_BUILTINS_HELP_TEXT            circuitpython_help_text
-#define MICROPY_PY_BUILTINS_INPUT                (1)
-#define MICROPY_MODULE_BUILTIN_INIT              (1)
-#define MICROPY_PY_ALL_SPECIAL_METHODS           (0)
-#define MICROPY_PY_MICROPYTHON_MEM_INFO          (1)
-#define MICROPY_PY_ARRAY_SLICE_ASSIGN            (1)
-#define MICROPY_NONSTANDARD_TYPECODES            (0)
-#define MICROPY_PY_BUILTINS_SLICE_ATTRS          (1)
-#define MICROPY_PY_SYS_EXIT                      (1)
-#define MICROPY_PY_SYS_MAXSIZE                   (1)
-#define MICROPY_PY_SYS_STDFILES                  (1)
+#define MICROPY_PY_REVERSE_SPECIAL_METHODS       (1)
 #define MICROPY_PY_SYS_STDIO_BUFFER              (1)
-#define MICROPY_PY_COLLECTIONS_ORDEREDDICT       (0)
-#define MICROPY_PY_MATH_SPECIAL_FUNCTIONS        (0)
-#define MICROPY_PY_CMATH                         (0)
-#define MICROPY_PY_IO                            (1)
-#define MICROPY_PY_IO_FILEIO                     (1)
-#define MICROPY_PY_UERRNO                        (0)
-#define MICROPY_PY_UBINASCII                     (1)
-#define MICROPY_PY_URANDOM                       (0)
-#define MICROPY_PY_URANDOM_EXTRA_FUNCS           (0)
-#define MICROPY_PY_UCTYPES                       (0)
-#define MICROPY_PY_UZLIB                         (0)
-#define MICROPY_PY_UJSON                         (0)
-#define MICROPY_PY_URE                           (0)
-#define MICROPY_PY_UHEAPQ                        (0)
-#define MICROPY_PY_UHASHLIB                      (1)
-#define MICROPY_PY_STRUCT                        (0)
-#define MICROPY_PY_FRAMEBUF                      (1)
 
-#define MICROPY_KBD_EXCEPTION                    (1)
+// 24kiB stack
+#define CIRCUITPY_DEFAULT_STACK_SIZE            (24 * 1024)
 
-#define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF   (1)
-#define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE     (0)
-
-// Scan gamepad every 32ms
-#define CIRCUITPY_GAMEPAD_TICKS 0x1f
-
-#if BLUETOOTH_SD
-#define MICROPY_PY_BLEIO                         (1)
-#define MICROPY_PY_BLE_NUS                       (0)
-#define MICROPY_PY_UBLUEPY                       (1)
-#define MICROPY_PY_UBLUEPY_PERIPHERAL            (1)
-#define MICROPY_PY_UBLUEPY_CENTRAL               (1)
-#define BLUETOOTH_WEBBLUETOOTH_REPL              (0)
+#ifdef NRF52840
+#define MICROPY_PY_SYS_PLATFORM "nRF52840"
+#define FLASH_SIZE                  (1024 * 1024)  // 1MiB
+#define RAM_SIZE                    (256 * 1024)   // 256 KiB
+// Special RAM area for SPIM3 transmit buffer, to work around hardware bug.
+// See common.template.ld.
+#define SPIM3_BUFFER_RAM_SIZE       (8 * 1024)     // 8 KiB
 #endif
 
-#ifndef MICROPY_PY_BLEIO
-#define MICROPY_PY_BLEIO                        (0)
+#ifdef NRF52833
+#define MICROPY_PY_SYS_PLATFORM "nRF52833"
+#define FLASH_SIZE                  (512 * 1024)  // 512 KiB
+#define RAM_SIZE                    (128 * 1024)  // 128 KiB
+// SPIM3 buffer is not needed on nRF52833: the SPIM3 hw bug is not present.
+#ifndef SPIM3_BUFFER_RAM_SIZE
+#define SPIM3_BUFFER_RAM_SIZE       (0)
+#endif
 #endif
 
-#ifndef MICROPY_PY_UBLUEPY
-#define MICROPY_PY_UBLUEPY                      (0)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// This also includes mpconfigboard.h.
+#include "py/circuitpy_mpconfig.h"
+
+// Definitions that might be overriden by mpconfigboard.h
+
+#ifndef CIRCUITPY_INTERNAL_NVM_SIZE
+#define CIRCUITPY_INTERNAL_NVM_SIZE (8 * 1024)
 #endif
 
-// type definitions for the specific machine
+#ifndef BOARD_HAS_32KHZ_XTAL
+// Assume crystal is present, which is the most common case.
+#define BOARD_HAS_32KHZ_XTAL (1)
+#endif
 
-#define BYTES_PER_WORD (4)
-
-#define MICROPY_MAKE_POINTER_CALLABLE(p) ((void*)((mp_uint_t)(p) | 1))
-
-#define MP_SSIZE_MAX (0x7fffffff)
-
-#define UINT_FMT "%u"
-#define INT_FMT "%d"
-#define HEX2_FMT "%02x"
-
-typedef int mp_int_t; // must be pointer size
-typedef unsigned int mp_uint_t; // must be pointer size
-typedef long mp_off_t;
-
-#define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
-#define mp_type_fileio mp_type_vfs_fat_fileio
-
-// extra built in modules to add to the list of known ones
-
-extern const struct _mp_obj_module_t microcontroller_module;
-extern const struct _mp_obj_module_t bitbangio_module;
-extern const struct _mp_obj_module_t analogio_module;
-extern const struct _mp_obj_module_t digitalio_module;
-extern const struct _mp_obj_module_t pulseio_module;
-extern const struct _mp_obj_module_t busio_module;
-extern const struct _mp_obj_module_t board_module;
-extern const struct _mp_obj_module_t os_module;
-extern const struct _mp_obj_module_t random_module;
-extern const struct _mp_obj_module_t storage_module;
-extern const struct _mp_obj_module_t struct_module;
-extern const struct _mp_obj_module_t time_module;
-extern const struct _mp_obj_module_t supervisor_module;
-extern const struct _mp_obj_module_t gamepad_module;
-extern const struct _mp_obj_module_t neopixel_write_module;
-extern const struct _mp_obj_module_t usb_hid_module;
-extern const struct _mp_obj_module_t bleio_module;
-
-extern const struct _mp_obj_module_t mp_module_ubluepy;
-
-#if MICROPY_PY_UBLUEPY
-#define UBLUEPY_MODULE                      { MP_ROM_QSTR(MP_QSTR_ubluepy), MP_ROM_PTR(&mp_module_ubluepy) },
+#if INTERNAL_FLASH_FILESYSTEM
+#ifndef CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE
+#define CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE (256 * 1024)
+#endif
 #else
-#define UBLUEPY_MODULE
+#define CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE (0)
 #endif
 
-#if MICROPY_PY_BLEIO
-#define BLEIO_MODULE                        { MP_ROM_QSTR(MP_QSTR_bleio), MP_ROM_PTR(&bleio_module) },
-#else
-#define BLEIO_MODULE
+// Flash layout, starting at 0x00000000
+//
+// - SoftDevice
+// - ISR
+// - firmware
+// - BLE config (bonding info, etc.) (optional)
+// - microcontroller.nvm (optional)
+// - internal CIRCUITPY flash filesystem (optional)
+//   The flash filesystem is adjacent to the bootloader, so that its location will not change even if
+//   other regions change in size.
+// - bootloader (note the MBR at 0x0 redirects to the bootloader here, in high flash)
+// - bootloader settings
+
+// Define these regions starting up from the bottom of flash:
+
+#define MBR_START_ADDR  (0x0)
+// MBR_SIZE is from nrf_mbr.h
+#define SD_FLASH_START_ADDR   (MBR_START_ADDR + MBR_SIZE)
+
+// SD_FLASH_SIZE is from nrf_sdm.h
+#define ISR_START_ADDR  (SD_FLASH_START_ADDR + SD_FLASH_SIZE)
+#define ISR_SIZE        (4 * 1024)   // 4kiB
+
+// Smallest unit of flash that can be erased.
+#define FLASH_ERASE_SIZE FLASH_PAGE_SIZE
+
+#define CIRCUITPY_FIRMWARE_START_ADDR  (ISR_START_ADDR + ISR_SIZE)
+
+// Define these regions starting down from the bootloader:
+
+// Bootloader values from https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/master/src/linker/s140_v6.ld
+#define BOOTLOADER_START_ADDR          (FLASH_SIZE - BOOTLOADER_SIZE - BOOTLOADER_SETTINGS_SIZE - BOOTLOADER_MBR_SIZE)
+#define BOOTLOADER_MBR_SIZE            (4 * 1024)     // 4kib
+#ifndef BOOTLOADER_SIZE
+#define BOOTLOADER_SIZE                (40 * 1024)     // 40kiB
+#endif
+#define BOOTLOADER_SETTINGS_START_ADDR (FLASH_SIZE - BOOTLOADER_SETTINGS_SIZE)
+#define BOOTLOADER_SETTINGS_SIZE       (4 * 1024)     // 4kiB
+
+#define CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_START_ADDR (BOOTLOADER_START_ADDR - CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE)
+
+#if CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE > 0 && CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_START_ADDR != (BOOTLOADER_START_ADDR - CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE)
+#warning Internal flash filesystem location has moved!
 #endif
 
-#ifdef NRF52840_XXAA
-#define USBHID_MODULE                       { MP_OBJ_NEW_QSTR(MP_QSTR_usb_hid), (mp_obj_t)&usb_hid_module },
-#else
-#define USBHID_MODULE
+#define CIRCUITPY_INTERNAL_NVM_START_ADDR (CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_START_ADDR - CIRCUITPY_INTERNAL_NVM_SIZE)
+
+// 32kiB for bonding, etc.
+#ifndef CIRCUITPY_BLE_CONFIG_SIZE
+#define CIRCUITPY_BLE_CONFIG_SIZE       (32 * 1024)
+#endif
+#define CIRCUITPY_BLE_CONFIG_START_ADDR (CIRCUITPY_INTERNAL_NVM_START_ADDR - CIRCUITPY_BLE_CONFIG_SIZE)
+
+// The firmware space is the space left over between the fixed lower and upper regions.
+#define CIRCUITPY_FIRMWARE_SIZE (CIRCUITPY_BLE_CONFIG_START_ADDR - CIRCUITPY_FIRMWARE_START_ADDR)
+
+#if BOOTLOADER_START_ADDR % FLASH_ERASE_SIZE != 0
+#error BOOTLOADER_START_ADDR must be on a flash erase boundary.
 #endif
 
-#define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_board           ), (mp_obj_t)&board_module           }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_busio           ), (mp_obj_t)&busio_module           }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_analogio        ), (mp_obj_t)&analogio_module        }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_digitalio       ), (mp_obj_t)&digitalio_module       }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_pulseio         ), (mp_obj_t)&pulseio_module         }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_microcontroller ), (mp_obj_t)&microcontroller_module }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_neopixel_write  ), (mp_obj_t)&neopixel_write_module  }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_bitbangio       ), (mp_obj_t)&bitbangio_module       }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_os              ), (mp_obj_t)&os_module              }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_random          ), (mp_obj_t)&random_module          }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_storage         ), (mp_obj_t)&storage_module         }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_struct          ), (mp_obj_t)&struct_module          }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_supervisor      ), (mp_obj_t)&supervisor_module      }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_gamepad         ), (mp_obj_t)&gamepad_module         }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_time            ), (mp_obj_t)&time_module            }, \
-    USBHID_MODULE  \
-    BLEIO_MODULE   \
-    UBLUEPY_MODULE \
-
-// extra built in names to add to the global namespace
-#define MICROPY_PORT_BUILTINS \
-    { MP_ROM_QSTR     (MP_QSTR_help  ), MP_ROM_PTR(&mp_builtin_help_obj) }, \
-    { MP_OBJ_NEW_QSTR (MP_QSTR_input ), (mp_obj_t)&mp_builtin_input_obj  }, \
-    { MP_ROM_QSTR     (MP_QSTR_open  ), MP_ROM_PTR(&mp_builtin_open_obj) }, \
-
-#define MP_STATE_PORT MP_STATE_VM
-
-#define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8]; \
-    mp_obj_t gamepad_singleton; \
-
-// We need to provide a declaration/definition of alloca()
-#include <alloca.h>
-
-void run_background_tasks(void);
-#define MICROPY_VM_HOOK_LOOP    run_background_tasks();
-#define MICROPY_VM_HOOK_RETURN  run_background_tasks();
-
-//#define CIRCUITPY_BOOT_OUTPUT_FILE "/boot_out.txt"
-#define CIRCUITPY_DEFAULT_STACK_SIZE 4096
-
+#if CIRCUITPY_INTERNAL_NVM_START_ADDR % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_INTERNAL_NVM_START_ADDR must be on a flash erase boundary.
 #endif
+#if CIRCUITPY_INTERNAL_NVM_SIZE % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_INTERNAL_NVM_SIZE must be a multiple of FLASH_ERASE_SIZE.
+#endif
+
+#if CIRCUITPY_BLE_CONFIG_START_ADDR % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_BLE_CONFIG_SIZE must be on a flash erase boundary.
+#endif
+#if CIRCUITPY_BLE_CONFIG_SIZE % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_BLE_CONFIG_SIZE must be a multiple of FLASH_ERASE_SIZE.
+#endif
+
+#if CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_START_ADDR % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE must be on a flash erase boundary.
+#endif
+#if CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE % FLASH_ERASE_SIZE != 0
+#error CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_SIZE must be a multiple of FLASH_ERASE_SIZE.
+#endif
+
+#if CIRCUITPY_FIRMWARE_SIZE < 0
+#error No space left in flash for firmware after specifying other regions!
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// RAM space definitions
+
+// Max RAM used by SoftDevice. Can be changed when SoftDevice parameters are changed.
+// On nRF52840, the first 64kB of RAM is composed of 8 8kB RAM blocks. Above those is
+// RAM block 8, which is 192kB.
+// If SPIM3_BUFFER_RAM_SIZE is 8kB, as opposed to zero, it must be in the first 64kB of RAM.
+// So the amount of RAM reserved for the SoftDevice must be no more than 56kB.
+// SoftDevice 6.1.0 with 5 connections and various increases can be made to use < 56kB.
+// To measure the minimum required amount of memory for given configuration, set this number
+// high enough to work and then check the mutation of the value done by sd_ble_enable().
+// See common.template.ld.
+#ifndef SOFTDEVICE_RAM_SIZE
+#define SOFTDEVICE_RAM_SIZE         (56 * 1024)
+#endif
+
+
+#define RAM_START_ADDR              (0x20000000)
+#define SOFTDEVICE_RAM_START_ADDR   (RAM_START_ADDR)
+#define SPIM3_BUFFER_RAM_START_ADDR (SOFTDEVICE_RAM_START_ADDR + SOFTDEVICE_RAM_SIZE)
+#define APP_RAM_START_ADDR          (SPIM3_BUFFER_RAM_START_ADDR + SPIM3_BUFFER_RAM_SIZE)
+#define APP_RAM_SIZE                (RAM_START_ADDR + RAM_SIZE - APP_RAM_START_ADDR)
+
+#if SPIM3_BUFFER_RAM_SIZE > 0 && SOFTDEVICE_RAM_SIZE + SPIM3_BUFFER_RAM_SIZE > (64 * 1024)
+#error SPIM3 buffer must be in the first 64kB of RAM.
+#endif
+
+#if SOFTDEVICE_RAM_SIZE + SPIM3_BUFFER_RAM_SIZE + APP_RAM_SIZE > RAM_SIZE
+#error RAM size regions overflow RAM
+#endif
+
+#if SOFTDEVICE_RAM_SIZE + SPIM3_BUFFER_RAM_SIZE + APP_RAM_SIZE < RAM_SIZE
+#error RAM size regions do not use all of RAM
+#endif
+
+
+#define MICROPY_PORT_ROOT_POINTERS                              \
+    CIRCUITPY_COMMON_ROOT_POINTERS                              \
+    uint16_t *pixels_pattern_heap;                              \
+    ble_drv_evt_handler_entry_t *ble_drv_evt_handler_entries;   \
+
+
+#endif  // NRF5_MPCONFIGPORT_H__

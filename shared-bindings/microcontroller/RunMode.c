@@ -26,28 +26,28 @@
 
 #include "shared-bindings/microcontroller/RunMode.h"
 
-//| .. currentmodule:: microcontroller
+//| class RunMode:
+//|     """run state of the microcontroller"""
 //|
-//| :class:`RunMode` -- run state of the microcontroller
-//| =============================================================
+//|     def __init__(self) -> None:
+//|         """Enum-like class to define the run mode of the microcontroller and
+//|         CircuitPython."""
 //|
-//| .. class:: microcontroller.RunMode
+//|     NORMAL: RunMode
+//|     """Run CircuitPython as normal.
 //|
-//|     Enum-like class to define the run mode of the microcontroller and
-//|     CircuitPython.
+//|     :type microcontroller.RunMode:"""
 //|
-//|     .. data:: NORMAL
+//|     SAFE_MODE: RunMode
+//|     """Run CircuitPython in safe mode. User code will not be run and the
+//|     file system will be writeable over USB.
 //|
-//|       Run CircuitPython as normal.
+//|     :type microcontroller.RunMode:"""
 //|
-//|     .. data:: SAFE_MODE
+//|     BOOTLOADER: RunMode
+//|     """Run the bootloader.
 //|
-//|       Run CircuitPython in safe mode. User code will not be run and the
-//|       file system will be writeable over USB.
-//|
-//|     .. data:: BOOTLOADER
-//|
-//|       Run the bootloader.
+//|     :type microcontroller.RunMode:"""
 //|
 const mp_obj_type_t mcu_runmode_type;
 
@@ -79,7 +79,7 @@ STATIC void mcu_runmode_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
         runmode = MP_QSTR_BOOTLOADER;
     }
     mp_printf(print, "%q.%q.%q", MP_QSTR_microcontroller, MP_QSTR_RunMode,
-              runmode);
+        runmode);
 }
 
 const mp_obj_type_t mcu_runmode_type = {

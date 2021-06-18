@@ -24,11 +24,38 @@
  * THE SOFTWARE.
  */
 
-#include "tusb.h"
+#include "py/runtime.h"
+#include "supervisor/filesystem.h"
+#include "supervisor/usb.h"
+#include "supervisor/shared/stack.h"
 
-void run_background_tasks(void) {
-#ifdef NRF52840_XXAA
-    tusb_task();
-    tud_cdc_write_flush();
+#if CIRCUITPY_DISPLAYIO
+#include "shared-module/displayio/__init__.h"
 #endif
+
+#if CIRCUITPY_AUDIOBUSIO
+#include "common-hal/audiobusio/I2SOut.h"
+#endif
+
+#if CIRCUITPY_AUDIOPWMIO
+#include "common-hal/audiopwmio/PWMAudioOut.h"
+#endif
+
+#if CIRCUITPY_BLEIO
+#include "supervisor/shared/bluetooth.h"
+#include "common-hal/_bleio/bonding.h"
+#endif
+
+void port_start_background_task(void) {
+}
+void port_finish_background_task(void) {
+}
+
+void port_background_task(void) {
+    #if CIRCUITPY_AUDIOPWMIO
+    audiopwmout_background();
+    #endif
+    #if CIRCUITPY_AUDIOBUSIO
+    i2s_background();
+    #endif
 }

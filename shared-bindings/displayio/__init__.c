@@ -26,58 +26,105 @@
 
 #include <stdint.h>
 
+#include "py/enum.h"
 #include "py/obj.h"
 #include "py/runtime.h"
 
 #include "shared-bindings/displayio/__init__.h"
 #include "shared-bindings/displayio/Bitmap.h"
+#include "shared-bindings/displayio/ColorConverter.h"
+#include "shared-bindings/displayio/Display.h"
+#include "shared-bindings/displayio/EPaperDisplay.h"
 #include "shared-bindings/displayio/FourWire.h"
 #include "shared-bindings/displayio/Group.h"
+#include "shared-bindings/displayio/I2CDisplay.h"
+#include "shared-bindings/displayio/OnDiskBitmap.h"
 #include "shared-bindings/displayio/Palette.h"
-#include "shared-bindings/displayio/Sprite.h"
+#include "shared-bindings/displayio/ParallelBus.h"
+#include "shared-bindings/displayio/Shape.h"
+#include "shared-bindings/displayio/TileGrid.h"
 
-//| :mod:`displayio` --- Native display driving
-//| =========================================================================
-//|
-//| .. module:: displayio
-//|   :synopsis: Native helpers for driving displays
-//|   :platform: SAMD21, SAMD51
+//| """Native helpers for driving displays
 //|
 //| The `displayio` module contains classes to manage display output
-//| including synchronizing with refresh rates and partial updating. It does
-//| not include display initialization commands. It should live in a Python
-//| driver for use when a display is connected to a board. It should also be
-//| built into the board init when the board has the display on it.
+//| including synchronizing with refresh rates and partial updating."""
 //|
-//| .. warning:: This will be changed before 4.0.0. Consider it very experimental.
+
+//| def release_displays() -> None:
+//|     """Releases any actively used displays so their busses and pins can be used again. This will also
+//|     release the builtin display on boards that have one. You will need to reinitialize it yourself
+//|     afterwards. This may take seconds to complete if an active EPaperDisplay is refreshing.
 //|
-//| Libraries
+//|     Use this once in your code.py if you initialize a display. Place it right before the
+//|     initialization so the display is active as long as possible."""
+//|     ...
 //|
-//| .. toctree::
-//|     :maxdepth: 3
+STATIC mp_obj_t displayio_release_displays(void) {
+    common_hal_displayio_release_displays();
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_0(displayio_release_displays_obj, displayio_release_displays);
+
+MAKE_ENUM_VALUE(displayio_colorspace_type, displayio_colorspace, RGB888, DISPLAYIO_COLORSPACE_RGB888);
+MAKE_ENUM_VALUE(displayio_colorspace_type, displayio_colorspace, RGB565, DISPLAYIO_COLORSPACE_RGB565);
+MAKE_ENUM_VALUE(displayio_colorspace_type, displayio_colorspace, RGB565_SWAPPED, DISPLAYIO_COLORSPACE_RGB565_SWAPPED);
+MAKE_ENUM_VALUE(displayio_colorspace_type, displayio_colorspace, RGB555, DISPLAYIO_COLORSPACE_RGB555);
+MAKE_ENUM_VALUE(displayio_colorspace_type, displayio_colorspace, RGB555_SWAPPED, DISPLAYIO_COLORSPACE_RGB555_SWAPPED);
+
+//| class Colorspace:
+//|     """The colorspace for a `ColorConverter` to operate in"""
 //|
-//|     Bitmap
-//|     FourWire
-//|     Group
-//|     Palette
-//|     Sprite
+//|     RGB888: Colorspace
+//|     """The standard 24-bit colorspace.  Bits 0-7 are blue, 8-15 are green, and 16-24 are red. (0xRRGGBB)"""
 //|
-//| All libraries change hardware state but are never deinit
+//|     RGB565: Colorspace
+//|     """The standard 16-bit colorspace.  Bits 0-4 are blue, bits 5-10 are green, and 11-15 are red (0bRRRRRGGGGGGBBBBB)"""
 //|
+//|     RGB565_SWAPPED: Colorspace
+//|     """The swapped 16-bit colorspace.  First, the high and low 8 bits of the number are swapped, then they are interpreted as for RGB565"""
+//|
+//|     RGB555: Colorspace
+//|     """The standard 15-bit colorspace.  Bits 0-4 are blue, bits 5-9 are green, and 11-14 are red.  The top bit is ignored. (0bxRRRRRGGGGGBBBBB)"""
+//|
+//|     RGB555_SWAPPED: Colorspace
+//|     """The swapped 15-bit colorspace.  First, the high and low 8 bits of the number are swapped, then they are interpreted as for RGB555"""
+//|
+MAKE_ENUM_MAP(displayio_colorspace) {
+    MAKE_ENUM_MAP_ENTRY(displayio_colorspace, RGB888),
+    MAKE_ENUM_MAP_ENTRY(displayio_colorspace, RGB565),
+    MAKE_ENUM_MAP_ENTRY(displayio_colorspace, RGB565_SWAPPED),
+    MAKE_ENUM_MAP_ENTRY(displayio_colorspace, RGB555),
+    MAKE_ENUM_MAP_ENTRY(displayio_colorspace, RGB555_SWAPPED),
+};
+STATIC MP_DEFINE_CONST_DICT(displayio_colorspace_locals_dict, displayio_colorspace_locals_table);
+
+MAKE_PRINTER(displayio, displayio_colorspace);
+MAKE_ENUM_TYPE(displayio, ColorSpace, displayio_colorspace);
+
 
 STATIC const mp_rom_map_elem_t displayio_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_displayio) },
     { MP_ROM_QSTR(MP_QSTR_Bitmap), MP_ROM_PTR(&displayio_bitmap_type) },
+    { MP_ROM_QSTR(MP_QSTR_ColorConverter), MP_ROM_PTR(&displayio_colorconverter_type) },
+    { MP_ROM_QSTR(MP_QSTR_Colorspace), MP_ROM_PTR(&displayio_colorspace_type) },
+    { MP_ROM_QSTR(MP_QSTR_Display), MP_ROM_PTR(&displayio_display_type) },
+    { MP_ROM_QSTR(MP_QSTR_EPaperDisplay), MP_ROM_PTR(&displayio_epaperdisplay_type) },
     { MP_ROM_QSTR(MP_QSTR_Group), MP_ROM_PTR(&displayio_group_type) },
+    { MP_ROM_QSTR(MP_QSTR_OnDiskBitmap), MP_ROM_PTR(&displayio_ondiskbitmap_type) },
     { MP_ROM_QSTR(MP_QSTR_Palette), MP_ROM_PTR(&displayio_palette_type) },
-    { MP_ROM_QSTR(MP_QSTR_Sprite), MP_ROM_PTR(&displayio_sprite_type) },
+    { MP_ROM_QSTR(MP_QSTR_Shape), MP_ROM_PTR(&displayio_shape_type) },
+    { MP_ROM_QSTR(MP_QSTR_TileGrid), MP_ROM_PTR(&displayio_tilegrid_type) },
 
     { MP_ROM_QSTR(MP_QSTR_FourWire), MP_ROM_PTR(&displayio_fourwire_type) },
+    { MP_ROM_QSTR(MP_QSTR_I2CDisplay), MP_ROM_PTR(&displayio_i2cdisplay_type) },
+    { MP_ROM_QSTR(MP_QSTR_ParallelBus), MP_ROM_PTR(&displayio_parallelbus_type) },
+
+    { MP_ROM_QSTR(MP_QSTR_release_displays), MP_ROM_PTR(&displayio_release_displays_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(displayio_module_globals, displayio_module_globals_table);
 
 const mp_obj_module_t displayio_module = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t*)&displayio_module_globals,
+    .globals = (mp_obj_dict_t *)&displayio_module_globals,
 };

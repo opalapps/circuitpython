@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * SPDX-FileCopyrightText: Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,16 @@ STATIC char *str_dup_maybe(const char *str) {
     return s2;
 }
 
+STATIC size_t count_cont_bytes(char *start, char *end) {
+    int count = 0;
+    for (char *pos = start; pos < end; pos++) {
+        if(UTF8_IS_CONT(*pos)) {
+            count++;
+        }
+    }
+    return count;
+}
+
 // By default assume terminal which implements VT100 commands...
 #ifndef MICROPY_HAL_HAS_VT100
 #define MICROPY_HAL_HAS_VT100 (1)
@@ -74,6 +84,7 @@ STATIC void mp_hal_move_cursor_back(uint pos) {
         // snprintf needs space for the terminating null character
         int n = snprintf(&vt100_command[0], sizeof(vt100_command), "\x1b[%u", pos);
         if (n > 0) {
+            assert((unsigned)n < sizeof(vt100_command));
             vt100_command[n] = 'D'; // replace null char
             mp_hal_stdout_tx_strn(vt100_command, n + 1);
         }
@@ -92,14 +103,45 @@ typedef struct _readline_t {
     int escape_seq;
     int hist_cur;
     size_t cursor_pos;
+    uint8_t utf8_cont_chars;
     char escape_seq_buf[1];
     const char *prompt;
 } readline_t;
 
 STATIC readline_t rl;
 
+#if MICROPY_REPL_EMACS_WORDS_MOVE
+STATIC size_t cursor_count_word(int forward) {
+    const char *line_buf = vstr_str(rl.line);
+    size_t pos = rl.cursor_pos;
+    bool in_word = false;
+
+    for (;;) {
+        // if moving backwards and we've reached 0... break
+        if (!forward && pos == 0) {
+            break;
+        }
+        // or if moving forwards and we've reached to the end of line... break
+        else if (forward && pos == vstr_len(rl.line)) {
+            break;
+        }
+
+        if (unichar_isalnum(line_buf[pos + (forward - 1)])) {
+            in_word = true;
+        } else if (in_word) {
+            break;
+        }
+
+        pos += forward ? forward : -1;
+    }
+
+    return forward ? pos - rl.cursor_pos : rl.cursor_pos - pos;
+}
+#endif
+
 int readline_process_char(int c) {
-    size_t last_line_len = rl.line->len;
+    size_t last_line_len = utf8_charlen((byte *)rl.line->buf, rl.line->len);
+    int cont_chars = 0;
     int redraw_step_back = 0;
     bool redraw_from_cursor = false;
     int redraw_step_forward = 0;
@@ -132,7 +174,7 @@ int readline_process_char(int c) {
             goto right_arrow_key;
         } else if (c == CHAR_CTRL_K) {
             // CTRL-K is kill from cursor to end-of-line, inclusive
-            vstr_cut_tail_bytes(rl.line, last_line_len - rl.cursor_pos);
+            vstr_cut_tail_bytes(rl.line, rl.line->len - rl.cursor_pos);
             // set redraw parameters
             redraw_from_cursor = true;
         } else if (c == CHAR_CTRL_N) {
@@ -143,10 +185,15 @@ int readline_process_char(int c) {
             goto up_arrow_key;
         } else if (c == CHAR_CTRL_U) {
             // CTRL-U is kill from beginning-of-line up to cursor
+            cont_chars = count_cont_bytes(rl.line->buf+rl.orig_line_len, rl.line->buf+rl.cursor_pos);
             vstr_cut_out_bytes(rl.line, rl.orig_line_len, rl.cursor_pos - rl.orig_line_len);
             // set redraw parameters
             redraw_step_back = rl.cursor_pos - rl.orig_line_len;
             redraw_from_cursor = true;
+        #endif
+        #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+        } else if (c == CHAR_CTRL_W) {
+            goto backward_kill_word;
         #endif
         } else if (c == '\r') {
             // newline
@@ -178,6 +225,12 @@ int readline_process_char(int c) {
                 int nspace = 1;
                 #endif
 
+                // Check if we have moved into a UTF-8 continuation byte
+                while (UTF8_IS_CONT(rl.line->buf[rl.cursor_pos-nspace])) {
+                    nspace++;
+                    cont_chars++;
+                }
+
                 // do the backspace
                 vstr_cut_out_bytes(rl.line, rl.cursor_pos - nspace, nspace);
                 // set redraw parameters
@@ -206,12 +259,27 @@ int readline_process_char(int c) {
                 redraw_step_forward = compl_len;
             }
         #endif
-        } else if (32 <= c && c <= 126) {
+        } else if (32 <= c) {
             // printable character
-            vstr_ins_char(rl.line, rl.cursor_pos, c);
-            // set redraw parameters
-            redraw_from_cursor = true;
-            redraw_step_forward = 1;
+            uint8_t lcp = rl.line->buf[rl.cursor_pos];
+            uint8_t cont_need = 0;
+            if (!UTF8_IS_CONT(c)) {
+                // ASCII or Lead code point
+                rl.utf8_cont_chars = 0;
+                lcp = c;
+            }else {
+                rl.utf8_cont_chars += 1;
+            }
+            if (lcp >= 0xc0 && lcp < 0xf8) {
+                cont_need = (0xe5 >> ((lcp >> 3) & 0x6)) & 3; // From unicode.c L195
+            }
+            vstr_ins_char(rl.line, rl.cursor_pos+rl.utf8_cont_chars, c);
+            // set redraw parameters if we have the entire character
+            if (rl.utf8_cont_chars == cont_need) {
+                redraw_from_cursor = true;
+                redraw_step_forward = rl.utf8_cont_chars+1;
+                cont_chars = rl.utf8_cont_chars;
+            }
         }
     } else if (rl.escape_seq == ESEQ_ESC) {
         switch (c) {
@@ -221,9 +289,40 @@ int readline_process_char(int c) {
             case 'O':
                 rl.escape_seq = ESEQ_ESC_O;
                 break;
+            #if MICROPY_REPL_EMACS_WORDS_MOVE
+            case 'b':
+#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+backward_word:
+#endif
+                redraw_step_back = cursor_count_word(0);
+                rl.escape_seq = ESEQ_NONE;
+                break;
+            case 'f':
+#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+forward_word:
+#endif
+                redraw_step_forward = cursor_count_word(1);
+                rl.escape_seq = ESEQ_NONE;
+                break;
+            case 'd':
+                vstr_cut_out_bytes(rl.line, rl.cursor_pos, cursor_count_word(1));
+                redraw_from_cursor = true;
+                rl.escape_seq = ESEQ_NONE;
+                break;
+            case 127:
+#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+backward_kill_word:
+#endif
+                redraw_step_back = cursor_count_word(0);
+                vstr_cut_out_bytes(rl.line, rl.cursor_pos - redraw_step_back, redraw_step_back);
+                redraw_from_cursor = true;
+                rl.escape_seq = ESEQ_NONE;
+                break;
+            #endif
             default:
                 DEBUG_printf("(ESC %d)", c);
                 rl.escape_seq = ESEQ_NONE;
+                break;
         }
     } else if (rl.escape_seq == ESEQ_ESC_BRACKET) {
         if ('0' <= c && c <= '9') {
@@ -237,6 +336,8 @@ up_arrow_key:
 #endif
                 // up arrow
                 if (rl.hist_cur + 1 < (int)READLINE_HIST_SIZE && MP_STATE_PORT(readline_hist)[rl.hist_cur + 1] != NULL) {
+                    // Check for continuation characters
+                    cont_chars = count_cont_bytes(rl.line->buf+rl.orig_line_len, rl.line->buf+rl.cursor_pos);
                     // increase hist num
                     rl.hist_cur += 1;
                     // set line to history
@@ -253,6 +354,8 @@ down_arrow_key:
 #endif
                 // down arrow
                 if (rl.hist_cur >= 0) {
+                    // Check for continuation characters
+                    cont_chars = count_cont_bytes(rl.line->buf+rl.orig_line_len, rl.line->buf+rl.cursor_pos);
                     // decrease hist num
                     rl.hist_cur -= 1;
                     // set line to history
@@ -272,6 +375,11 @@ right_arrow_key:
                 // right arrow
                 if (rl.cursor_pos < rl.line->len) {
                     redraw_step_forward = 1;
+                    // Check if we have moved into a UTF-8 continuation byte
+                    while (UTF8_IS_CONT(rl.line->buf[rl.cursor_pos+redraw_step_forward]) &&
+                            rl.cursor_pos+redraw_step_forward < rl.line->len) {
+                        redraw_step_forward++;
+                    }
                 }
             } else if (c == 'D') {
 #if MICROPY_REPL_EMACS_KEYS
@@ -280,6 +388,11 @@ left_arrow_key:
                 // left arrow
                 if (rl.cursor_pos > rl.orig_line_len) {
                     redraw_step_back = 1;
+                    // Check if we have moved into a UTF-8 continuation byte
+                    while (UTF8_IS_CONT(rl.line->buf[rl.cursor_pos-redraw_step_back])) {
+                        redraw_step_back++;
+                        cont_chars++;
+                    }
                 }
             } else if (c == 'H') {
                 // home
@@ -295,6 +408,7 @@ left_arrow_key:
         if (c == '~') {
             if (rl.escape_seq_buf[0] == '1' || rl.escape_seq_buf[0] == '7') {
 home_key:
+                cont_chars = count_cont_bytes(rl.line->buf+rl.orig_line_len, rl.line->buf+rl.cursor_pos);
                 redraw_step_back = rl.cursor_pos - rl.orig_line_len;
             } else if (rl.escape_seq_buf[0] == '4' || rl.escape_seq_buf[0] == '8') {
 end_key:
@@ -305,12 +419,35 @@ end_key:
 delete_key:
 #endif
                 if (rl.cursor_pos < rl.line->len) {
-                    vstr_cut_out_bytes(rl.line, rl.cursor_pos, 1);
+                    size_t len = 1;
+                    while (UTF8_IS_CONT(rl.line->buf[rl.cursor_pos+len]) &&
+                            rl.cursor_pos+len < rl.line->len) {
+                        len++;
+                    }
+                    vstr_cut_out_bytes(rl.line, rl.cursor_pos, len);
                     redraw_from_cursor = true;
                 }
             } else {
                 DEBUG_printf("(ESC [ %c %d)", rl.escape_seq_buf[0], c);
             }
+        #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+        } else if (c == ';' && rl.escape_seq_buf[0] == '1') {
+            // ';' is used to separate parameters. so first parameter was '1',
+            // that's used for sequences like ctrl+left, which we will try to parse.
+            // escape_seq state is reset back to ESEQ_ESC_BRACKET, as if we've just received
+            // the opening bracket, because more parameters are to come.
+            // we don't track the parameters themselves to keep low on logic and code size. that
+            // might be required in the future if more complex sequences are added.
+            rl.escape_seq = ESEQ_ESC_BRACKET;
+            // goto away from the state-machine, as rl.escape_seq will be overridden.
+            goto redraw;
+        } else if (rl.escape_seq_buf[0] == '5' && c == 'C') {
+            // ctrl+right
+            goto forward_word;
+        } else if (rl.escape_seq_buf[0] == '5' && c == 'D') {
+            // ctrl+left
+            goto backward_word;
+        #endif
         } else {
             DEBUG_printf("(ESC [ %c %d)", rl.escape_seq_buf[0], c);
         }
@@ -329,20 +466,26 @@ delete_key:
         rl.escape_seq = ESEQ_NONE;
     }
 
+#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+redraw:
+#endif
+
     // redraw command prompt, efficiently
     if (redraw_step_back > 0) {
-        mp_hal_move_cursor_back(redraw_step_back);
+        mp_hal_move_cursor_back(redraw_step_back-cont_chars);
         rl.cursor_pos -= redraw_step_back;
     }
     if (redraw_from_cursor) {
-        if (rl.line->len < last_line_len) {
+        if (utf8_charlen((byte *)rl.line->buf, rl.line->len) < last_line_len) {
             // erase old chars
             mp_hal_erase_line_from_cursor(last_line_len - rl.cursor_pos);
         }
+        // Check for continuation characters
+        cont_chars = count_cont_bytes(rl.line->buf+rl.cursor_pos+redraw_step_forward, rl.line->buf+rl.line->len);
         // draw new chars
         mp_hal_stdout_tx_strn(rl.line->buf + rl.cursor_pos, rl.line->len - rl.cursor_pos);
         // move cursor forward if needed (already moved forward by length of line, so move it back)
-        mp_hal_move_cursor_back(rl.line->len - (rl.cursor_pos + redraw_step_forward));
+        mp_hal_move_cursor_back(rl.line->len - (rl.cursor_pos + redraw_step_forward) - cont_chars);
         rl.cursor_pos += redraw_step_forward;
     } else if (redraw_step_forward > 0) {
         // draw over old chars to move cursor forwards
